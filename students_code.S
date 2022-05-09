@@ -121,18 +121,53 @@ hamming_weight:
 
 negate_first_k:
   # %rdi holds codeword, and %rsi holds k
+  movq %rdi, %rax
+  movq %rsi, %rdx
+  dec %rdx
   movq $1, %rbx
   NOT_LOOP:
-    xor %rbx,
+    xor %rbx, %rax
+    cmp $0, %rdx
+    je  END_NOT_LOOP
+    imul $2, %rbx
+    jmp NOT_LOOP
+  END_NOT_LOOP:
   ret
 
 bring_balance_to_the_word:
+  # %rdi hold a pointer to codeword, %rsi holds len
+  xor %rax,%rax
+  movq %rdi, %r10
+  movq %rsi, %r11
+  movq $63, %rdx
   movq $1, %rbx
-  div $2, %rsi # divide %rsi by 2
-  NOT_LOOP:
-    call negate_first_k
-    # check if word is balanced or not!
-    cmp $32, %rbx # check if you have reached the end of the loop or not!
-    jl NOT_LOOP
+  movq $0 %r9 # %r9 holds the index we stopped at which is 0 at the beginning
+  BALANCE_LOOP:
+    cmp $0, %rdx
+    je RESET_VALUES
+    COMEBACK_AFTER_RESET:
+      call hamming_weight
+      movq %rax, %r8
+      movq %rsi %rax
+      idiv %r8
+      cmp $2 , %rax
+      je BALANCED
+      NOT_LOOP:
+        xor %rbx, %rcx
+        imul $2, %rbx
+        inc %r9
+        dec %rdx
+        jmp BALANCE_LOOP
+
+  RESET_VALUES:
+  add $8, %rdi
+  dec %rsi
+  cmp $0, %rsi
+  je BALANCED # there are no more bytes to flip!
+  movq $63 %rdx
+  jmp COMEBACK_AFTER_RESET
+
+  BALANCED:
+  movq %r9, %rax # index we stopped at as a return value!
   ret
 
