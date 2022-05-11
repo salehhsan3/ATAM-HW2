@@ -10,27 +10,42 @@ read_input:
   lea path(%rip), %rdi # put the address of path into rdi in order to call get_path function
   call get_path
   movq %rax, %rdi # use the return value from previous function to get file address 
+  movq %rax, %r13 # debugging!
   movq $2, %rax # command code to OPEN is 2
   movq $0, %rsi # open for READ ONLY
   syscall # sys_open
 
-  # allocate a new variable to hold what we want to read from the file
+  movq %r13,%rdi # debugging!
   subq $8, %rsp
   subq $8, %rbp # necessary?
   movq %rbp, %rsi # %rsi now holds the address of the variable we just allocated
   movq $0, %rax # command code to READ is 0
   movq $64, %rdx # number of bit to read
   syscall # sys_read
+  movq (%rsi), %r15
+
+  # allocate a new variable to hold what we want to read from the file
+  movq %r13,%rdi # debugging!
+  add $8, %rdi
+  subq $8, %rsp
+  subq $8, %rbp # necessary?  movq %rbp, %rsi # %rsi now holds the address of the variable we just allocated
+  movq %rbp, %rsi # %rsi now holds the address of the variable we just allocated
+  movq $0, %rax # command code to READ is 0
+  movq $64, %rdx # number of bit to read
+  syscall # sys_read
+  movq (%rsi), %r14
+
   # it was given that the number is no more than 7 digits each digit take 1 byte to write in its ASCII form
   # therefore atmost it will take 7*8=56bits for the number and 8 more for 0xa therefore it will be 64bits all around!
 
-  movq (%rsi), %rdx # save what you read from the file before deallocating
-  addq $8, %rsp # free the memory you allocated
-  addq $8, %rbp # free the memory you allocated
+  movq (%rsi), %rdx # save what you read from the file before deallocating ,,,, used to be (%rsi)
+  addq $16, %rsp # free the memory you allocated
+  addq $16, %rbp # free the memory you allocated
+  xor %r9,%r9 # clear %r9
   movq $64, %r9 # %r9 will hold the number of bits the number takes up
 
   NUMBER_LOOP:
-    cmp $0x0a,%dl # compare byte
+    cmp $0xa,%dl # compare byte
     je END_NUMBER_LOOP
     shr $8, %rdx
     sub $8, %r9

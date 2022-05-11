@@ -114,10 +114,10 @@ static void TestHammingWeight2()
 int main(void)
 {
     TestPdf();
-    TestOneWord();
-    TestTwoWords();
-    TestTwoWordsPdf();
-    TestHammingWeight();
-    TestHammingWeight2();
+    // TestOneWord();
+    // TestTwoWords();
+    // TestTwoWordsPdf();
+    // TestHammingWeight();
+    // TestHammingWeight2();
     return 0;
 }
