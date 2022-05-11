@@ -5,60 +5,57 @@
 
 .section .text
 read_input:
-  pushq %rdi # save the input on the stack before changing it.
-
+  pushq %rdi # save the input (codeword) on the stack before changing it.
   lea path(%rip), %rdi # put the address of path into rdi in order to call get_path function
   call get_path
   movq %rax, %rdi # use the return value from previous function to get file address 
-  movq %rax, %r13 # debugging!
+  # pushq %rax # save path for later use
   movq $2, %rax # command code to OPEN is 2
   movq $0, %rsi # open for READ ONLY
   syscall # sys_open
-
-  movq %r13,%rdi # debugging!
-  subq $8, %rsp
-  subq $8, %rbp # necessary?
-  movq %rbp, %rsi # %rsi now holds the address of the variable we just allocated
+  
+  movq %rax, %rdi # use return value from sys_open to get file address
+  popq %rsi # get codeword address from stack!
+  pushq %rax # save file descriptor for later in order to close file
+  pushq %rsi # resave codeword address on stack!
   movq $0, %rax # command code to READ is 0
-  movq $64, %rdx # number of bit to read
+  movq $128, %rdx # number of bit to read, this is a potential error/fault because there may not be this many bits to read
   syscall # sys_read
-  movq (%rsi), %r15
+  movq (%rsi), %rdx
 
-  # allocate a new variable to hold what we want to read from the file
-  movq %r13,%rdi # debugging!
-  add $8, %rdi
-  subq $8, %rsp
-  subq $8, %rbp # necessary?  movq %rbp, %rsi # %rsi now holds the address of the variable we just allocated
-  movq %rbp, %rsi # %rsi now holds the address of the variable we just allocated
-  movq $0, %rax # command code to READ is 0
-  movq $64, %rdx # number of bit to read
-  syscall # sys_read
-  movq (%rsi), %r14
-
-  # it was given that the number is no more than 7 digits each digit take 1 byte to write in its ASCII form
-  # therefore atmost it will take 7*8=56bits for the number and 8 more for 0xa therefore it will be 64bits all around!
-
-  movq (%rsi), %rdx # save what you read from the file before deallocating ,,,, used to be (%rsi)
-  addq $16, %rsp # free the memory you allocated
-  addq $16, %rbp # free the memory you allocated
   xor %r9,%r9 # clear %r9
-  movq $64, %r9 # %r9 will hold the number of bits the number takes up
-
+  xor %rcx,%rcx # clear %r9
+  movq $128, %r9 # %r9 will hold the number of bits the number takes up
   NUMBER_LOOP:
     cmp $0xa,%dl # compare byte
     je END_NUMBER_LOOP
-    shr $8, %rdx
+    movb %dl, %cl
+    ror $8, %rcx
+    ror $8, %rdx
     sub $8, %r9
     jmp NUMBER_LOOP # if we have reached the end of the number then by all means stop.
   END_NUMBER_LOOP:
-    shr $4, %rdx # convert number into null terminated string!
-    shl $4, %rdx # convert number into null terminated string!
+    /*shl $8, %rcx # convert number into null terminated string!
+    ror $16, %rcx*/
+    # shl $8, %rcx # convert number into null terminated string!
+    # the null terminated string that holds our number is in %rcx
+  FIX_NUMBER:
+    cmp $0, %cl
+    jne END_FIX_LOOP
+    shr $8, %rcx
+    jmp FIX_NUMBER
+  END_FIX_LOOP:
 
-  movq %rdx, %rdi # conventions
+  # refetch codeword address from the stack!
+  popq %rdi
+  pushq %rdi
+  movq %rcx, (%rdi) # conventions
   call atam_atol
-  movq %rax, %rdx # move the actual number's value into %rdx when you're done!
+  movq %rax, %rcx # move the actual number's value into %rdx when you're done!
   movq $8, %r8
+  xor %rdx,%rdx
   idiv %r8
+  movq %rcx, %rdx # just for now because above we moved %rax into %rcx and now changed it to %rcx because of idiv
   # %rax now holds the return value
 
   popq %r10 # %r10 now holds the address of codeword which we saved on the stack in the beginning
