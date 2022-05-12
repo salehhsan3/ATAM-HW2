@@ -78,34 +78,43 @@ read_input: # passed initial check
 
 
 hamming_weight: # passed initial check
+  # pay attention : we have 2 return values, the number of 1's in %rax and the number of 0's in %rdx
   # %rdi holds the array and %rsi hold the length of the array
+  /*pushq %r12 # save according to conventions
+  pushq %r13 # save according to conventions*/
   movq $0, %rax # number of 1's counter
   xor %rdx, %rdx
   xor %rcx, %rcx
-  movq (%rdi), %rdx # %rdx now holds the first quad of (%rdi)
+  movq (%rdi), %r11 # %r11 now holds the first quad of (%rdi)
   movq $0, %r8 # shifted bits counter, potential bug with counting!!!!!!!!!!!!!!
-  
+  jmp CALCULATION_LOOP
+
+  ADD_ONE_TO_ZEROS_COUNTER:
+    add $1, %rdx
   CALCULATION_LOOP:
     cmp $0, %rsi # checks if we have counted all bits(throughout all quads)
     je EXIT
     cmp $64, %r8 # checks if we have counted all bits in current quad    jge CHANGE_BYTE
     je CHANGE_QUAD
-    shr $1, %rdx
+    shr $1, %r11
     inc %r8
-    jnc CALCULATION_LOOP
+    jnc ADD_ONE_TO_ZEROS_COUNTER
     add $1, %rax
     jmp CALCULATION_LOOP
   CHANGE_QUAD:
     dec %rsi
     add $8, %rdi
-    movq (%rdi), %rdx
+    movq (%rdi), %r11
     movq $0, %r8
     jmp CALCULATION_LOOP
   EXIT:
+    /*popq %r13
+    popq %r12*/
   ret
 
 negate_first_k:
   # %rdi holds codeword, and %rsi holds k
+  pushq %rbx # this register is callee save
   movq %rdi, %rax
   movq %rsi, %rdx
   movq $1, %rbx
@@ -117,42 +126,63 @@ negate_first_k:
     imul $2, %rbx
     jmp NOT_LOOP
   END_NOT_LOOP:
+  popq %rbx # restore pervious value
   ret
 
 bring_balance_to_the_word:
   # %rdi hold a pointer to codeword, %rsi holds len
-  xor %rax,%rax
-  /*movq %rdi, %r10
-  movq %rsi, %r11*/
-  movq $0, %rdx # for calculating which quad we should be in!
+  pushq %r12 # callee saved
+  pushq %r13 # callee saved
+  movq %rdi, %r12 # save it for later use in hamming_weight
+  movq %rsi, %r13 # save it for later use in hamming_weight
+  xor %rax,%rax # for the index we stop at which is 0 at the beginning
   movq $1, %rbx # for xor purposes
-  movq $0, %r9 # %r9 holds the index we stopped at which is 0 at the beginning
+  xor %rdx, %rdx # for calculating which quad we should be in!
+  
   BALANCE_LOOP:
-    cmp $64, %rdx
-    je RESET_VALUES
-    COMEBACK_AFTER_RESET:
-      call hamming_weight
-      movq %rax, %r8
-      movq %rsi, %rax
-      idiv %r8
-      cmp $2 , %rax
-      je BALANCED
-      PERFORM_NOT_ON_K:
-        xor %rbx, %rcx
-        imul $2, %rbx
-        inc %r9
-        inc %rdx
-        jmp BALANCE_LOOP
+    pushq %rax
+    pushq %rdx
+    pushq %rcx
+    pushq %rsi
+    pushq %rdi
+    # %rbx is callee saved therefore we don't have to save it
+    # pass proper parameters to %rsi and %rdi
+    movq %r12, %rdi
+    movq %r13, %rsi
+    call hamming_weight
+    cmp %rax, %rdx
+    je BALANCED # if the 0's an 1's are equal the word is balanced!
+    popq %rdi
+    popq %rsi
+    popq %rcx
+    popq %rdx
+    popq %rax
+    PERFORM_NOT_ON_K:
+      xor %rbx, (%rdi)
+      add $1, %rax
+      add $1, %rdx
+      cmp $64, %rdx
+      je RESET_VALUES
+      imul $2, %rbx
+      jmp BALANCE_LOOP
 
   RESET_VALUES:
   add $8, %rdi
   dec %rsi
   cmp $0, %rsi
-  je BALANCED # there are no more bytes to flip!
+  je EXIT_BALANCE # there are no more bytes to flip!
   movq $0, %rdx
-  jmp COMEBACK_AFTER_RESET
+  movq $1, %rbx # restart process for new quad!
+  jmp BALANCE_LOOP
 
   BALANCED:
-  movq %r9, %rax # index we stopped at as a return value!
+    popq %rdi
+    popq %rsi
+    popq %rcx
+    popq %rdx
+    popq %rax
+    popq %r13 # callee saved
+    popq %r12 # callee saved
+  EXIT_BALANCE:
   ret
 
