@@ -122,13 +122,13 @@ negate_first_k:
 bring_balance_to_the_word:
   # %rdi hold a pointer to codeword, %rsi holds len
   xor %rax,%rax
-  movq %rdi, %r10
-  movq %rsi, %r11
-  movq $63, %rdx
-  movq $1, %rbx
+  /*movq %rdi, %r10
+  movq %rsi, %r11*/
+  movq $0, %rdx # for calculating which quad we should be in!
+  movq $1, %rbx # for xor purposes
   movq $0, %r9 # %r9 holds the index we stopped at which is 0 at the beginning
   BALANCE_LOOP:
-    cmp $0, %rdx
+    cmp $64, %rdx
     je RESET_VALUES
     COMEBACK_AFTER_RESET:
       call hamming_weight
@@ -141,7 +141,7 @@ bring_balance_to_the_word:
         xor %rbx, %rcx
         imul $2, %rbx
         inc %r9
-        dec %rdx
+        inc %rdx
         jmp BALANCE_LOOP
 
   RESET_VALUES:
@@ -149,7 +149,7 @@ bring_balance_to_the_word:
   dec %rsi
   cmp $0, %rsi
   je BALANCED # there are no more bytes to flip!
-  movq $63, %rdx
+  movq $0, %rdx
   jmp COMEBACK_AFTER_RESET
 
   BALANCED:
