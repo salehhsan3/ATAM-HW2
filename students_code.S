@@ -45,10 +45,15 @@ read_input:
     shr $8, %rcx
     jmp FIX_NUMBER
   END_FIX_LOOP:
+  xor %r10, %r10
+  movq $128, %r10
+  sub %r9, %r10 # calculate offset and then add 8 to it to account for the end of line character
+  add $8, %r10
 
   # refetch codeword address from the stack!
   popq %rdi
   pushq %rdi
+  pushq %r10 # save the offset on the stack so that we use it while reading later!
   movq %rcx, (%rdi) # conventions
   call atam_atol
   movq %rax, %rcx # move the actual number's value into %rdx when you're done!
@@ -58,33 +63,26 @@ read_input:
   movq %rcx, %rdx # just for now because above we moved %rax into %rcx and now changed it to %rcx because of idiv
   # %rax now holds the return value
 
-  popq %r10 # %r10 now holds the address of codeword which we saved on the stack in the beginning
-  lea path(%rip), %r11 # %r11 now holds the address of the text we want to read
-  add %r9, %r11 # making %r11 hold the address of the memory path where the actual data starts (after the number)
-  movq %r11, %rdi
-  # you should align the address with that of the one right after the line break which is after the line you read!
-
-  READ_LOOP:
+  popq %r10 # %r10 now holds the offset from the beginning of the file we want to read from.
+  popq %rsi # %rsi now holds the address of codeword
+  popq %rdi # %rdi now holds the file descriptor
+  pushq %rax # save the return value for the function on the stack to return later
+  pushq %rdi # resave file descriptor on the stack
+  READ_DATA:
     cmp $0, %rdx # %rdx has the number of bytes we want to read.
-    je END_READ_LOOP
-    subq $8, %rsp
-    subq $8, %rbp # necessary?
-    movq %rbp, %rsi # %rsi now holds the address of the variable we just allocated
-    movq $0, %rax # command code to READ is 0
-    movq $8, %rdx # number of bit to read
+    je END_READ_DATA
+    movq $0x11, %rax # command code to READ at an offset is 0x11
+    imul $8, %rdx # number of bits to read
     syscall # sys_read
-    sub $8, %rdx
-    addq $8, %rsp # free the memory you allocated
-    addq $8, %rbp # free the memory you allocated 
-    movq (%rsi),%r12
-    movq %r12, (%rdi)
-    add $1, %rdi
-    jmp READ_LOOP
-  END_READ_LOOP:
+
+    
+    movq (%rsi), %r9 # for debugging
+    
+  END_READ_DATA:
   # now that we have read this file we need to close it
-    lea path(%rip), %rdi
-    movq $3, %rax
+    popq %rax
     syscall # sys_close
+    popq %rax
   ret
 
 
