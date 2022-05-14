@@ -14,6 +14,14 @@ my_ili_handler:
 	pushq %rbx
 	pushq %rsi
 	pushq %rdi
+	pushq %r8
+	pushq %r9
+	pushq %r10
+	pushq %r11
+	pushq %r12
+	pushq %r13
+	pushq %r14
+	pushq %r15
 
 	# C code following the sysV ABI requires DF to be clear on function entry
 	cld
@@ -37,6 +45,14 @@ my_ili_handler:
 	cmpl $0, %eax
 	jne exit_handler
 	# Jumping to the old ili_handler
+	popq %r15
+	popq %r14
+	popq %r13
+	popq %r12
+	popq %r11
+	popq %r10
+	popq %r9
+	popq %r8
 	popq %rdi
 	popq %rsi
 	popq %rbx
@@ -51,6 +67,14 @@ my_ili_handler:
 	addq %rcx, 8(%rbp)
 
 	# Registers restore
+	popq %r15
+	popq %r14
+	popq %r13
+	popq %r12
+	popq %r11
+	popq %r10
+	popq %r9
+	popq %r8
 	popq %rdi
 	# Return value
 	movl %eax, %edi
