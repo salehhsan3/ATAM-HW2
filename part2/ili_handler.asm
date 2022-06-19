@@ -32,14 +32,14 @@ my_ili_handler:
 	cmpb $0x0f, %dil
 	je two_bytes_opcode
 	# Here we have an 1 byte opcode
-	movq $1, %rcx
 	andw $0xff, %di
 	call what_to_do
+	movq $1, %rcx
 	jmp check_return_value
 	two_bytes_opcode:
-	movq $2, %rcx
 	shrw $8, %di
 	call what_to_do
+	movq $2, %rcx
 
 	check_return_value:
 	cmpl $0, %eax
@@ -63,7 +63,7 @@ my_ili_handler:
 	jmp *(old_ili_handler)
 
 	exit_handler:
-	# Make sure to land on the next instuction after we return
+	# Make sure to land on the next instruction after we return
 	addq %rcx, 8(%rbp)
 
 	# Registers restore
